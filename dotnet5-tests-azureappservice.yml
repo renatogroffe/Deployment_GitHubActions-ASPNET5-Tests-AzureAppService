@@ -1,0 +1,50 @@
+name: .NET 5 + Testes + Azure App Service
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    env:
+      CAMINHO_PROJETO_TESTES: ./APIFinancas.Testes/APIFinancas.Testes.csproj
+      CAMINHO_PROJETO_WEBAPP: ./APIFinancas
+      NOME_WEBAPP_AZURE: groffefinancas0
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Exibir versões do .NET antes de configurar um release específico
+      run: dotnet --list-sdks
+
+    - name: Setup .NET 5
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.100
+
+    - name: Exibir versão do .NET
+      run: dotnet --list-sdks
+
+    - name: Executar testes automatizados
+      run: dotnet test ${{ env.CAMINHO_PROJETO_TESTES }} --verbosity minimal
+
+    - name: Build com o utilitario dotnet
+      run: dotnet build ${{ env.CAMINHO_PROJETO_WEBAPP }} --configuration Release
+
+    - name: Publish com o utilitario dotnet
+      run: dotnet publish ${{ env.CAMINHO_PROJETO_WEBAPP }} -c Release -o app
+
+    - name: Login no Azure
+      uses: Azure/login@v1.1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Deployment no Azure App Service
+      uses: Azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.NOME_WEBAPP_AZURE }}
+        package: './app'
